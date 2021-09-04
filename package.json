@@ -1,0 +1,19 @@
+{
+  "name": "reactive-component",
+  "version": "1.0.0",
+  "description": "Librería para crear componentes reactivos en javascript vanilla",
+  "main": "reactive-component.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/angeljsb/reactive-components-js.git"
+  },
+  "author": "angeljsb",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/angeljsb/reactive-components-js/issues"
+  },
+  "homepage": "https://github.com/angeljsb/reactive-components-js#readme"
+}

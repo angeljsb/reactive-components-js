@@ -1,4 +1,169 @@
-import EffectHandler from "./effect-handler.js";
+//namespace
+var Reactive = {
+  /**
+   * Crea un elemento y le añade atributos
+   *
+   * @param {string} tagName El nombre de la etiqueta del elemento
+   * @param {any} options Un objeto con los atributos que se le
+   * desea añadir a la etiqueta html
+   * @param {HTMLElement[]} children Un arreglo de elementos
+   */
+  createElement: (tagName, options = {}, children = []) => {
+    const elemento = document.createElement(tagName);
+
+    for (let key in options) {
+      if (elemento[key] !== undefined) {
+        elemento[key] = options[key];
+      }
+    }
+
+    children.forEach((value) => {
+      elemento.appendChild(value);
+    });
+
+    return elemento;
+  },
+
+  /**
+   * Convierte un string en formato html en un elemento del DOM
+   *
+   * @param {string} htmlText El string en formato html
+   *
+   * @return {HTMLElement} El elemento definido por la primera etiqueta
+   * que se abra y se cierre en el string recibido
+   */
+  fromHTML: (htmlText) => {
+    const normalizedText = htmlText.trim().replace(/>\s+</g, "><");
+    const div = document.createElement("div");
+    div.innerHTML = normalizedText;
+    return div.children[0];
+  },
+};
+
+Reactive.EffectHandler = () => {
+  const al = {};
+  const globals = [];
+
+  /**
+   * Añade una acción a una llave. Al activar dicha llave, todos
+   * los efectos secundarios añadidos a ella se activan.
+   *
+   * @param {string} key La llave a la que añadir la acción
+   * @param {()=>void} action Acción a ejecutar al cambiar
+   * el estado
+   */
+  const add = (key, action) => {
+    if (!action instanceof Function)
+      throw TypeError("action is not a function");
+    if (!al[key]) {
+      al[key] = [];
+    }
+    al[key].push(action);
+  };
+  /**
+   * Añade un efecto secundario que se activa sin importar a cual de las
+   * llaves corresponda la llamada.
+   *
+   * @param {(key: string) => void} action La acción a añadir
+   */
+  const addGlobal = (action) => {
+    if (!action instanceof Function)
+      throw TypeError("action is not a function");
+    globals.push(action);
+  };
+  /**
+   * Remueve un efecto secundario que dejará de activarse al despachar
+   * su llave.
+   *
+   * Si no se pasa una acción, se remueven todas las acciones para dicha
+   * llave
+   *
+   * @param {string} key El nombre de la llave en la que está ese efecto
+   * @param {()=>void | false} action Acción que se desea remover
+   *
+   * @return {boolean} Si la acción fue removida correctamente
+   */
+  const remove = (key, action = false) => {
+    if (!al[key]) {
+      return false;
+    }
+    if (!action) {
+      al[key] = [];
+      return true;
+    }
+    const i = al[key].indexOf(action);
+    if (i > -1) {
+      al[key].splice(i, 1);
+      return true;
+    }
+    return false;
+  };
+  /**
+   * Remueve una acción global, que dejará de ejecutarse al llamar
+   * cualquier llave.
+   *
+   * @param {(key: string)=>boolean | false}  action La acción global a
+   * remover. Si no se añade una, remuve todas las acciones globales
+   *
+   * @return {boolean} Si se pudo remover alguna acción
+   */
+  const removeGlobal = (action = false) => {
+    if (!action) {
+      const rem = globals.splice(0);
+      return rem.length > 0;
+    }
+    const i = globals.indexOf(action);
+    if (i > -1) {
+      globals.splice(i, 1);
+      return true;
+    }
+    return false;
+  };
+  /**
+   * Activa los events globales
+   *
+   * @param {string} key La llave que activó los efectos globales si la
+   * hay
+   */
+  const dispatchGlobals = (key = "") => {
+    globals.forEach((funct) => funct(key));
+  };
+  /**
+   * Activa los eventos correspondientes a una llave, evitando la
+   * activación de los eventos globales
+   *
+   * @param {string} key La llave cuyos efectos se activarán
+   */
+  const dispatchIgnoreGlobals = (key) => {
+    if (al[key]) {
+      al[key].forEach((funct) => funct());
+    }
+  };
+  /**
+   * Activa todos los eventos correspondientes a una llave y los globales
+   * como efectos secundarios de las mismas
+   *
+   * Es el metodo normal para activar las funciones relacionadas a una
+   * llave
+   *
+   * @param {string} key La llave
+   */
+  const dispatch = (key = null) => {
+    dispatchIgnoreGlobals(key);
+
+    dispatchGlobals(key);
+  };
+
+  return {
+    add,
+    addGlobal,
+    remove,
+    removeGlobal,
+    dispatchGlobals,
+    dispatchIgnoreGlobals,
+    dispatch,
+  };
+};
 
 const _state = (state = {}) => {
   let s = { ...state };
@@ -23,16 +188,15 @@ const _state = (state = {}) => {
  * elemento html condicionado por el estado y props actuales, el cual será
  * renderizado cada vez que estos cambien
  */
-function ReactiveComponent(template, initState = {}) {
+Reactive.Component = function (template, initState = {}) {
   this._state = _state(initState);
   this.props = {};
   if (template) this.template = template.bind(this);
-  this.element = this.template(this.props);
-  this.sideEffects = EffectHandler();
-}
+  this.sideEffects = Reactive.EffectHandler();
+};
 
-ReactiveComponent.prototype = {
-  constructor: ReactiveComponent,
+Reactive.Component.prototype = {
+  constructor: Reactive.Component,
 
   /**
    * Función para cambiar el estado de un componente reactivo.
@@ -61,12 +225,72 @@ ReactiveComponent.prototype = {
    * Función que renderiza el dom según la devolución de template
    */
   render: function () {
-    const newTemp = this.template(this.props);
+    const newTemp = this.template(this);
+
+    if (!this.element) {
+      this.element = newTemp;
+      this.putEvents();
+      return;
+    }
 
     if (!this.element.isEqualNode(newTemp)) {
-      this.element.replaceWith(newTemp);
-      this.element = newTemp;
+      const node = this.copyNode(this.element, newTemp);
+      this.element = node;
+      this.putEvents();
     }
+  },
+
+  copyNode: function (into, node) {
+    if (into.tagName !== node.tagName) {
+      into.replaceWith(node);
+      return node;
+    }
+
+    while (into.children.length > node.children.length) {
+      into.removeChild(into.children[node.children.length]);
+    }
+
+    into
+      .getAttributeNames()
+      .filter((name) => !node.getAttributeNames().includes(name))
+      .forEach((name) => into.removeAttribute(name));
+
+    Array.from(node.children).forEach((val, index) => {
+      let childInto = into.children[index];
+      if (!childInto) {
+        into.appendChild(val);
+        return;
+      }
+      this.copyNode(childInto, val);
+    });
+
+    Array.from(node.attributes).forEach((val) => {
+      into.setAttribute(val.name, val.value);
+    });
+
+    if (node.hasChildNodes() && node.firstChild.nodeType === Node.TEXT_NODE) {
+      into.innerHTML = node.innerHTML;
+    }
+
+    return into;
+  },
+
+  /**
+   * Si el objeto tiene un arreglo de eventos, se encarga de colocar
+   * todos los eventos en su respectivo componente cada vez que
+   * se vuelva a renderizar
+   */
+  putEvents: function (el = this.element) {
+    if (!this.events) return;
+    this.events.forEach((e) => {
+      let target = el;
+      if (e.selector) {
+        const element = target.querySelector(e.selector);
+        if (!element) return;
+        target = element;
+      }
+      target.addEventListener(e.type, e.action);
+    });
   },
 
   /**
@@ -120,10 +344,16 @@ ReactiveComponent.prototype = {
   },
 
   get: function (props = {}) {
+    const prevElement = this.element;
     this.props = { ...props };
 
     this.render();
 
+    if (prevElement) {
+      const element = this.element.cloneNode(true);
+      this.putEvents(element);
+      return element;
+    }
     return this.element;
   },
 
@@ -144,43 +374,58 @@ ReactiveComponent.prototype = {
 };
 
 /**
- *
- * @param {(props?:any) => HTMLElement} template Una función plantilla
+ * @typedef ComponentConfig
+ * @property {(props?:any) => HTMLElement} template Una función plantilla
  * que recibe un objeto props y tiene acceso a this.state, y debe basarse
  * en ellas para crear un html element que será lo que se renderizará como
  * element
- * @param {*} initState El estado inicial de todos los objetos de la clase
+ * @property {*} initState El estado inicial de todos los objetos de la clase
  * devuelta
- * @param {*} extra Campos extra que se van a añadir a los objetos de
+ * @property {*} definitions Campos extra que se van a añadir a los objetos de
  * la nueva clase. Sí es una función, esta se ejecutará en el
  * contexto del constructor de la nueva clase
+ */
+
+/**
+ *
+ * @param {ComponentConfig} componentConfig Objeto de configuración
+ * para crear el nuevo componente
  * @returns {Function} Un constructor del componente reactivo asociado
  * al template y el state pasados. Este constructor recibe un objeto
  * props y renderiza un elemento en base a dicho objeto y al estado
  */
-const componentFromTemplate = (template, initState = {}, extra = {}) => {
-  function _Comp(config = {}) {
-    if (extra) {
-      if (extra instanceof Function) {
-        extra.call(this);
+Reactive.createComponent = (componentConfig = {}) => {
+  const template = componentConfig.template;
+  const initialState = componentConfig.initialState || {};
+  const definitions = componentConfig.definitions || {};
+  const events = componentConfig.events || [];
+  function _Comp(props = {}) {
+    if (definitions) {
+      if (definitions instanceof Function) {
+        definitions.call(this);
       } else {
-        const ex = { ...extra };
+        const ex = { ...definitions };
         for (let i in ex) {
           this[i] = ex[i];
         }
       }
     }
-    this.config = config;
+    this.props = props;
+    this.events = events
+      .filter((e) => e.type && e.action)
+      .map((e) => {
+        return {
+          type: e.type,
+          action: e.action.bind(this),
+          selector: e.selector,
+        };
+      });
 
-    ReactiveComponent.call(this, null, initState);
+    Reactive.Component.call(this, null, initialState);
   }
-  _Comp.prototype = Object.create(ReactiveComponent.prototype);
+  _Comp.prototype = Object.create(Reactive.Component.prototype);
   _Comp.prototype.template = template;
   _Comp.prototype.constructor = _Comp;
 
   return _Comp;
 };
-
-export { componentFromTemplate };
-
-export default ReactiveComponent;
