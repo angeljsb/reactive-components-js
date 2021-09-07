@@ -343,25 +343,18 @@ Reactive.Component.prototype = {
     return this.sideEffects.removeGlobal(action);
   },
 
-  addEventListener: function (type, listener, selector = "") {
-    if (!this.events) {
-      this.events = [];
-    }
-    const el = {
-      type,
-      listener,
-    }
-    if (selector) {
-      el.selector = selector;
-    }
-    this.events.push(el);
+  addEventListener: function (type, listener, selector = null) {
+    this.events = this.events || [];
+    this.events.push({ type, listener, selector });
 
-    if(!this.element) return;
+    if (!this.element) return;
       
-    let selected = this.element;
-    if(selector) {
-      selected = selected.querySelector(selector);
+    if (!selector) {
+      this.element.addEventListener(type, listener);
+      return;
     }
+    
+    const selected = this.element.querySelector(selector);
     selected?.addEventListener(type, listener);
   },
 
