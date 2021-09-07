@@ -289,7 +289,7 @@ Reactive.Component.prototype = {
         if (!element) return;
         target = element;
       }
-      target.addEventListener(e.type, e.action);
+      target.addEventListener(e.type, e.listener);
     });
   },
 
@@ -341,6 +341,28 @@ Reactive.Component.prototype = {
    */
   offChangeAny: function (action = false) {
     return this.sideEffects.removeGlobal(action);
+  },
+
+  addEventListener: function (type, listener, selector = "") {
+    if (!this.events) {
+      this.events = [];
+    }
+    const el = {
+      type,
+      listener,
+    }
+    if (selector) {
+      el.selector = selector;
+    }
+    this.events.push(el);
+
+    if(!this.element) return;
+      
+    let selected = this.element;
+    if(selector) {
+      selected = selected.querySelector(selector);
+    }
+    selected?.addEventListener(type, listener);
   },
 
   get: function (props = {}) {
@@ -412,11 +434,11 @@ Reactive.createComponent = (componentConfig = {}) => {
     }
     this.props = props;
     this.events = events
-      .filter((e) => e.type && e.action)
+      .filter((e) => e.type && e.listener)
       .map((e) => {
         return {
           type: e.type,
-          action: e.action.bind(this),
+          listener: e.listener.bind(this),
           selector: e.selector,
         };
       });
