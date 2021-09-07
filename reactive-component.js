@@ -343,6 +343,17 @@ Reactive.Component.prototype = {
     return this.sideEffects.removeGlobal(action);
   },
 
+  /**
+   * Añade un eventListener al componente reactivo o a uno de los
+   * elementos que lo conforman señalado por un selector
+   * 
+   * @param {string} type El tipo de evento
+   * @param {(Event)=>void} listener Función que se activará al
+   * activarse el evento
+   * @param {string} selector El selector del elemento al que se le
+   * añadirá el eventListener. Si no se pasa uno, el eventListener se
+   * añade en el elemento base del componente
+   */
   addEventListener: function (type, listener, selector = null) {
     this.events = this.events || [];
     this.events.push({ type, listener, selector });
@@ -356,6 +367,34 @@ Reactive.Component.prototype = {
     
     const selected = this.element.querySelector(selector);
     selected?.addEventListener(type, listener);
+  },
+
+  /**
+   * Remueve un eventListener del componente
+   * 
+   * @param {string} type El tipo de evento
+   * @param {(Event)=>void} listener El eventListener a remover
+   * @param {string} selector El selector al que está añadido el
+   * eventListener si es que lo hay
+   */
+  removeEventListener: function (type, listener, selector = null) {
+    if (!this.events) return;
+
+    const remove = this.events
+        .find((event) => event.type == type 
+            && event.listener == listener
+            && (!selector || event.selector == selector));
+    if (remove) this.events.remove(remove);
+
+    if (!this.element) return;
+
+    if (!selector) {
+      this.element.removeEventListener(type, listener);
+      return;
+    }
+
+    const selected = this.element.querySelector(selector);
+    selected?.removeEventListener(type, listener);
   },
 
   get: function (props = {}) {
