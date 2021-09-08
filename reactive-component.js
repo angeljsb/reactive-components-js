@@ -266,6 +266,9 @@ Reactive.Component.prototype = {
 
     Array.from(node.attributes).forEach((val) => {
       into.setAttribute(val.name, val.value);
+      if (val.name == "value") {
+        into.value = val.value;
+      }
     });
 
     if (node.hasChildNodes() && node.firstChild.nodeType === Node.TEXT_NODE) {
@@ -346,7 +349,7 @@ Reactive.Component.prototype = {
   /**
    * Añade un eventListener al componente reactivo o a uno de los
    * elementos que lo conforman señalado por un selector
-   * 
+   *
    * @param {string} type El tipo de evento
    * @param {(Event)=>void} listener Función que se activará al
    * activarse el evento
@@ -359,19 +362,19 @@ Reactive.Component.prototype = {
     this.events.push({ type, listener, selector });
 
     if (!this.element) return;
-      
+
     if (!selector) {
       this.element.addEventListener(type, listener);
       return;
     }
-    
+
     const selected = this.element.querySelector(selector);
     selected?.addEventListener(type, listener);
   },
 
   /**
    * Remueve un eventListener del componente
-   * 
+   *
    * @param {string} type El tipo de evento
    * @param {(Event)=>void} listener El eventListener a remover
    * @param {string} selector El selector al que está añadido el
@@ -380,11 +383,13 @@ Reactive.Component.prototype = {
   removeEventListener: function (type, listener, selector = null) {
     if (!this.events) return;
 
-    const remove = this.events
-        .find((event) => event.type == type 
-            && event.listener == listener
-            && (!selector || event.selector == selector));
-    if (remove) this.events.remove(remove);
+    const remove = this.events.findIndex(
+      (event) =>
+        event.type == type &&
+        event.listener == listener &&
+        (!selector || event.selector == selector)
+    );
+    if (remove >= 0) this.events.splice(remove, 1);
 
     if (!this.element) return;
 
