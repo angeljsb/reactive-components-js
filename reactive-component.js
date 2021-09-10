@@ -285,14 +285,17 @@ Reactive.Component.prototype = {
    */
   putEvents: function (el = this.element) {
     if (!this.events) return;
-    this.events.forEach((e) => {
-      let target = el;
-      if (e.selector) {
-        const element = target.querySelector(e.selector);
-        if (!element) return;
-        target = element;
+    this.events.forEach((current) => {
+      if (!current._listener) {
+        current._listener = current.selector
+          ? (e) => {
+              const tar = e.target.closest(current.selector);
+              if (!tar) return;
+              current.listener.call(this, e);
+            }
+          : current.listener.bind(this);
       }
-      target.addEventListener(e.type, e.listener);
+      el.addEventListener(current.type, current._listener);
     });
   },
 
@@ -361,15 +364,9 @@ Reactive.Component.prototype = {
     this.events = this.events || [];
     this.events.push({ type, listener, selector });
 
-    if (!this.element) return;
-
-    if (!selector) {
-      this.element.addEventListener(type, listener);
-      return;
+    if (this.element) {
+      this.putEvents();
     }
-
-    const selected = this.element.querySelector(selector);
-    selected?.addEventListener(type, listener);
   },
 
   /**
@@ -385,21 +382,18 @@ Reactive.Component.prototype = {
 
     const remove = this.events.findIndex(
       (event) =>
-        event.type == type &&
-        event.listener == listener &&
-        (!selector || event.selector == selector)
+        event.type === type &&
+        event.listener === listener &&
+        ((!event.selector && !selector) || event.selector === selector)
     );
-    if (remove >= 0) this.events.splice(remove, 1);
 
-    if (!this.element) return;
-
-    if (!selector) {
-      this.element.removeEventListener(type, listener);
-      return;
+    if (remove >= 0) {
+      const event = this.events[remove];
+      if (this.element && event._listener) {
+        this.element.removeEventListener(event.type, event._listener);
+      }
+      this.events.splice(remove, 1);
     }
-
-    const selected = this.element.querySelector(selector);
-    selected?.removeEventListener(type, listener);
   },
 
   get: function (props = {}) {
@@ -470,15 +464,7 @@ Reactive.createComponent = (componentConfig = {}) => {
       }
     }
     this.props = props;
-    this.events = events
-      .filter((e) => e.type && e.listener)
-      .map((e) => {
-        return {
-          type: e.type,
-          listener: e.listener.bind(this),
-          selector: e.selector,
-        };
-      });
+    this.events = events.filter((e) => e.type && e.listener);
 
     Reactive.Component.call(this, null, initialState);
   }
