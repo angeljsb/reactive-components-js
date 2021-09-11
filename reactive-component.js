@@ -1,7 +1,7 @@
 //namespace
 var Reactive = {
   /**
-   * Crea un elemento y le añade atributos
+   * Crea un elemento con los atributos e hijos especificados
    *
    * @param {string} tagName El nombre de la etiqueta del elemento
    * @param {any} options Un objeto con los atributos que se le
@@ -226,28 +226,56 @@ Reactive.Component.prototype = {
    */
   render: function () {
     const newTemp = this.template(this);
+    newTemp.component = this;
 
-    if (!this.element) {
-      this.element = newTemp;
-      this.putEvents();
-      return;
-    }
-
-    if (!this.element.isEqualNode(newTemp)) {
-      const node = this.copyNode(this.element, newTemp);
+    if (!this.element || !this.element.isEqualNode(newTemp)) {
+      const node = this.element
+        ? this.copyNode(this.element, newTemp)
+        : newTemp;
       this.element = node;
+      this.element.component = this;
       this.putEvents();
     }
   },
 
+  /**
+   * Función que copia un nodo en otro. Si ambos nodos son completamente
+   * diferentes, solo remplaza el primero con el segundo. De haber
+   * similitudes suficientes, se modificarán los atributos del primer
+   * nodo para volverlo identico al segundo.
+   *
+   * En el segundo caso, también se aplicará la misma operación a todos
+   * los hijos que haya en común entre ambos nodos
+   * @param into El nodo que se quiere igualar a otro
+   * @param node El nodo que se va a copiar en el otro
+   * @returns {Node} El nodo que está en el DOM luego de ejecutarse la
+   * acción. Puede ser cualquiera de los dos parametros
+   */
   copyNode: function (into, node) {
-    if (into.tagName !== node.tagName) {
+    if (into === node) return into;
+    if (
+      into.tagName !== node.tagName ||
+      into.nodeType === Node.TEXT_NODE ||
+      node.nodeType === Node.TEXT_NODE ||
+      (into.component && !node.component)
+    ) {
       into.replaceWith(node);
       return node;
     }
+    if (node.component && into.component !== node.component) {
+      into.replaceWith(node);
+      node.component.putEvents(node);
+      return node;
+    }
+    if (into.isEqualNode(node)) {
+      return into;
+    }
 
-    while (into.children.length > node.children.length) {
-      into.removeChild(into.children[node.children.length]);
+    if (into.childNodes.length > node.childNodes.length) {
+      const l = node.childNodes.length;
+      while (into.childNodes[l]) {
+        into.removeChild(into.childNodes[l]);
+      }
     }
 
     into
@@ -255,10 +283,10 @@ Reactive.Component.prototype = {
       .filter((name) => !node.getAttributeNames().includes(name))
       .forEach((name) => into.removeAttribute(name));
 
-    Array.from(node.children).forEach((val, index) => {
-      let childInto = into.children[index];
+    Array.from(node.childNodes).forEach((val, index) => {
+      let childInto = into.childNodes[index];
       if (!childInto) {
-        into.appendChild(val);
+        into.appendChild(val.component ? val : val.cloneNode(true));
         return;
       }
       this.copyNode(childInto, val);
@@ -266,14 +294,10 @@ Reactive.Component.prototype = {
 
     Array.from(node.attributes).forEach((val) => {
       into.setAttribute(val.name, val.value);
-      if (val.name == "value") {
+      if (val.name === "value") {
         into.value = val.value;
       }
     });
-
-    if (node.hasChildNodes() && node.firstChild.nodeType === Node.TEXT_NODE) {
-      into.innerHTML = node.innerHTML;
-    }
 
     return into;
   },
@@ -397,16 +421,10 @@ Reactive.Component.prototype = {
   },
 
   get: function (props = {}) {
-    const prevElement = this.element;
     this.props = { ...props };
 
     this.render();
 
-    if (prevElement) {
-      const element = this.element.cloneNode(true);
-      this.putEvents(element);
-      return element;
-    }
     return this.element;
   },
 
@@ -464,7 +482,11 @@ Reactive.createComponent = (componentConfig = {}) => {
       }
     }
     this.props = props;
-    this.events = events.filter((e) => e.type && e.listener);
+    this.events = events
+      .filter((e) => e.type && e.listener)
+      .map((e) => {
+        return { ...e };
+      });
 
     Reactive.Component.call(this, null, initialState);
   }
