@@ -190,7 +190,7 @@ const _state = (state = {}) => {
  */
 Reactive.Component = function (template, initState = {}) {
   this._state = _state(initState);
-  this.props = {};
+  this._props = {};
   if (template) this.template = template.bind(this);
   this.sideEffects = Reactive.EffectHandler();
 };
@@ -420,12 +420,24 @@ Reactive.Component.prototype = {
     }
   },
 
+  /**
+   * Renderiza el componente y retorna el elemento html actual del
+   * mismo
+   *
+   * @param {any} props Un objeto con un conjunto de propiedades que
+   * pueden ser leídas desde la función template para condicionar
+   * la vista
+   */
   get: function (props = {}) {
-    this.props = { ...props };
+    this._props = { ...props };
 
     this.render();
 
     return this.element;
+  },
+
+  get props() {
+    return { ...this._props };
   },
 
   /**
@@ -458,11 +470,13 @@ Reactive.Component.prototype = {
  */
 
 /**
+ * Genera un tipo de componente a partir de una plantilla y un conjunto
+ * configuraciones
  *
  * @param {ComponentConfig} componentConfig Objeto de configuración
  * para crear el nuevo componente
  * @returns {Function} Un constructor del componente reactivo asociado
- * al template y el state pasados. Este constructor recibe un objeto
+ * al template. Este constructor recibe un objeto
  * props y renderiza un elemento en base a dicho objeto y al estado
  */
 Reactive.createComponent = (componentConfig = {}) => {
@@ -470,7 +484,9 @@ Reactive.createComponent = (componentConfig = {}) => {
   const initialState = componentConfig.initialState || {};
   const definitions = componentConfig.definitions || {};
   const events = componentConfig.events || [];
-  function _Comp(props = {}) {
+  function _Comp() {
+    Reactive.Component.call(this, null, initialState);
+
     if (definitions) {
       if (definitions instanceof Function) {
         definitions.call(this);
@@ -481,14 +497,12 @@ Reactive.createComponent = (componentConfig = {}) => {
         }
       }
     }
-    this.props = props;
+
     this.events = events
       .filter((e) => e.type && e.listener)
       .map((e) => {
         return { ...e };
       });
-
-    Reactive.Component.call(this, null, initialState);
   }
   _Comp.prototype = Object.create(Reactive.Component.prototype);
   _Comp.prototype.template = template;
