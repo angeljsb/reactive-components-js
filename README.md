@@ -8,7 +8,7 @@ Descarga la carpeta del último release disponible y añádelo a tu proyecto. De
 <script src="/path/to/reactive.js"></script>
 ```
 
-Con eso, toda la funcionalidad de la librería estará guardada en nuestro namespace `Reactive`.
+Con eso, toda la funcionalidad de la librería estará guardada en nuestro namespace [Reactive](https://angeljsb.github.io/reactive-components-doc/Reactive.html).
 
 ## Reactividad
 
@@ -34,12 +34,12 @@ function template(component){
 ```
 
 Leyendo el codigo por linea tenemos que:
-- Reactive.fromHTML: Función proveída por la librería que convierte un string en un elemento html. (Es guardada en una constante "html" por comodidad)
+- [Reactive.fromHTML](https://angeljsb.github.io/reactive-components-doc/Reactive.html#.fromHTML): Función proveída por la librería que convierte un string en un elemento html. (Es guardada en una constante "html" por comodidad)
 - function template(component): Definimos la función plantilla, la cual recibirá el componente en cada renderización. Y deberá devolver el elemento html correspondiente a la vista
 - component.state: Por medio de esta sentencia accedemos al estado del componente
 - return html(htmlString): Creamos el string html y lo convertimos en un elemento html antes de devolverlo
 
-Ahora, para crear componentes a partir de esta plantilla, se usa la función Reactive.createComponent de la siguiente manera:
+Ahora, para crear componentes a partir de esta plantilla, se usa la función [Reactive.createComponent](https://angeljsb.github.io/reactive-components-doc/Reactive.html#.createComponent) de la siguiente manera:
 
 ```javascript
 const HelloWorld = Reactive.createComponent({ 
@@ -84,7 +84,7 @@ Por ejemplo, el fragmento de código `hello.state = {}` lanza un error.
 
 Entonces, ¿Cómo cambio el estado de mi componente reactivo?
 
-Para eso existe el método `Component.setState(newState)`. Este método recibe un objeto con los nuevos estados. Las llaves que existan en el "state" pero no en el objeto "newState" no serán cambiadas. Del mismo modo, si hay llaves en el objeto newState que no existan en el state, estas serán ignoradas. El método setState solo funciona para cambiar las llaves del state que ya existen, no puede crear nuevas llaves ni borrar existentes.
+Para eso existe el método [Component.setState(newState)](https://angeljsb.github.io/reactive-components-doc/Reactive.Component.html#setState). Este método recibe un objeto con los nuevos estados. Las llaves que existan en el "state" pero no en el objeto "newState" no serán cambiadas. Del mismo modo, si hay llaves en el objeto newState que no existan en el state, estas serán ignoradas. El método setState solo funciona para cambiar las llaves del state que ya existen, no puede crear nuevas llaves ni borrar existentes.
 
 En nuestro ejemplo se puede cambiar el estado de la siguiente manera.
 
@@ -106,7 +106,7 @@ console.log(hello.state); //Expected { name: "State" }
 
 Pero, ¿Por qué la llave "test" es ignorada y la llave "name" es afectada?
 
-Para responder esta pregunta debemos regresar a la definición de nuestro componente con `createComponent`. Podrás ver que en el objeto de configuración pasamos un parametro `initialState` que tiene una llave "name" con valor "World!!". Desde que definimos así el componente `HelloWorld`, todas las instancias de este tipo tendrán un estado inicial con esa llave y ese valor.
+Para responder esta pregunta debemos regresar a la definición de nuestro componente con [createComponent](https://angeljsb.github.io/reactive-components-doc/Reactive.html#.createComponente). Podrás ver que en el objeto de configuración pasamos un parametro `initialState` que tiene una llave "name" con valor "World!!". Desde que definimos así el componente `HelloWorld`, todas las instancias de este tipo tendrán un estado inicial con esa llave y ese valor.
 
 ```javascript
 const HelloWorld = Reactive.createComponent({ 
@@ -121,7 +121,7 @@ Por lo tanto, cada componente de tipo HelloWorld tendrá un state con una única
 
 Una de las cosas más complicadas con las que podemos lidiar a la hora de implementar la reactividad en javascript vanilla es la escucha de eventos. Esto de debe a que, al cambiar constantemente la vista, los escucha de eventos que son añadidos a un elemento pueden perderse en cualquier momento. Debido a esto, ejecutar sentencias como `myComponent.element.addEventListener(type, listener)` o `myComponent.get().addEventListener(type, listener)` son una mala práctica.
 
-Con esto en mente, la librería Reactive Components provee metodologías que permiten añadir a los componentes agentes de escucha que no se perderán en los siguientes renderizados. La primera de ellas es añadir los agentes de escucha en la definición del componente como uno de los parámetros de configuración de `Reactive.createComponent()`.
+Con esto en mente, la librería Reactive Components provee metodologías que permiten añadir a los componentes agentes de escucha que no se perderán en los siguientes renderizados. La primera de ellas es añadir los agentes de escucha en la definición del componente como uno de los [parámetros de configuración](https://angeljsb.github.io/reactive-components-doc/global.html#ComponentConfig) de `Reactive.createComponent()`.
 
 Para ejemplificar, vamos a crear un componente similar al anterior ejemplo pero al cual se le pueda cambiar el nombre con un input.
 
@@ -149,12 +149,12 @@ const InputHello = Reactive.createComponent({
 });
 ```
 
-Podemos ver que ahora el objeto de configuración que pasamos a createComponent tiene una propiedad "events" la cual recibe un ***arreglo de objetos*** con los agentes de escucha que se vayan a añadir.
+Podemos ver que ahora el objeto de configuración que pasamos a createComponent tiene una propiedad "[events](https://angeljsb.github.io/reactive-components-doc/global.html#ComponentEvListener)" la cual recibe un ***arreglo de objetos*** con los agentes de escucha que se vayan a añadir.
 
 Los objetos que se pasan en este arreglo pueden tener tres propiedades:
 - type: El tipo de evento. Acepta los mismos que la función EventTarget.addEventListener
 - listener: Una función que se ejecutará al activarse el evento. Y recibe el evento como parametro
-- selector[opcional]: Un selector que indicará cuál elemento del componente debe activar el evento. Si no se pasa uno, se añade el evento al elemento raíz del componente (Es decir, al elemento html que es devuelto por la función template)
+- selector\[opcional]: Un selector que indicará cuál elemento del componente debe activar el evento. Si no se pasa uno, se añade el evento al elemento raíz del componente (Es decir, al elemento html que es devuelto por la función template)
 
 Sabiendo esto, podemos ver que en el ejemplo creamos un tipo de componente InputHello, el cual contiene un input de tipo texto y un botón. Además, vemos que al input se le añade un evento de tipo "change", que cambia el estado "name" por el valor agregado en el input.
 
@@ -229,11 +229,11 @@ Ahora, supongamos que queremos que al cambiar el texto en el input su valor se m
 
 ### Eventos de estado
 
-Cuando tenemos una instancia de un componente reactivo, nos es posible escuchar desde fuera los cambios en su estado. Esto se hace a través de la función `Component.onChangeState(key, listener)` la cual recibe dos parámetros obligatorios:
+Cuando tenemos una instancia de un componente reactivo, nos es posible escuchar desde fuera los cambios en su estado. Esto se hace a través de la función [Component.onChangeState(key, listener)](https://angeljsb.github.io/reactive-components-doc/Reactive.Component.html#onChangeState) la cual recibe dos parámetros obligatorios:
 - key: Un string con el nombre del estado que se desea escuchar
 - listener: Una función que se ejecutará al cambiar dicho estado
 
-También existe una función `Component.onChangeAny(listener)` la cual recibe únicamente el listener y se ejecuta al cambiar cualquiera de los estados del componente. El listener de onChangeAny recibe como primer parámetro un arreglo con los nombres de las propiedades que cambiaron en el estado para provocar que se ejecutara el evento.
+También existe una función [Component.onChangeAny(listener)](https://angeljsb.github.io/reactive-components-doc/Reactive.Component.html#onChangeAny) la cual recibe únicamente el listener y se ejecuta al cambiar cualquiera de los estados del componente. El listener de onChangeAny recibe como primer parámetro un arreglo con los nombres de las propiedades que cambiaron en el estado para provocar que se ejecutara el evento.
 
 En este caso, vamos a usar la primera de estas funciones para escuchar el estado "name" de nuestro componente input y al cambiar este, actualizar el estado "name" del componente hello. En la práctica puede hacerse así
 
@@ -256,7 +256,7 @@ Y listo, en la trcera pestaña del [sandbox](https://codesandbox.io/embed/prueba
 
 Las props son datos que el componente puede recibir desde un ambiente externo (Dígase su componente padre o la función que lo inserta al DOM). Al igual que el state, las props condicionan el renderizado del componente, la diferencia es que el state es interno del componente e independiente de todo los demás mientras que las props vienen del exterior.
 
-Los componentes normalmente recibirán las props a través del primer parametro de la función `Component.get([props])`. Sí, aquella que hemos usado todo este tiempo para agregar el componente al DOM y a la que no hemos estado pasando ningún parámetro.
+Los componentes normalmente recibirán las props a través del primer parametro de la función [Component.get(\[props\])](https://angeljsb.github.io/reactive-components-doc/Reactive.Component.html#get). Sí, aquella que hemos usado todo este tiempo para agregar el componente al DOM y a la que no hemos estado pasando ningún parámetro.
 
 El valor de las props puede ser accedido por la función template a través de su parámetro component, con la sentencia `component.props`.
 
