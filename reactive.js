@@ -1,12 +1,20 @@
-//namespace
+/**
+ * El namespace que guarda la funcionalidad de la librería Reactive
+ * Components
+ *
+ * @namespace
+ */
 var Reactive = {
   /**
    * Crea un elemento con los atributos e hijos especificados
    *
    * @param {string} tagName El nombre de la etiqueta del elemento
    * @param {any} options Un objeto con los atributos que se le
-   * desea añadir a la etiqueta html
-   * @param {HTMLElement[]} children Un arreglo de elementos
+   * desea añadir a la etiqueta html. El atributo "class" debe ser
+   * cambiado con el nombre "className" y el atributo "for" debe
+   * ser cambiado con el nombre "HTMLFor"
+   * @param {HTMLElement[]} children Un arreglo de elementos que
+   * serán añadidos como hijos del elemento creado
    */
   createElement: (tagName, options = {}, children = []) => {
     const elemento = document.createElement(tagName);
@@ -49,7 +57,7 @@ Reactive.EffectHandler = () => {
    * los efectos secundarios añadidos a ella se activan.
    *
    * @param {string} key La llave a la que añadir la acción
-   * @param {()=>void} action Acción a ejecutar al cambiar
+   * @param {Function} action Acción a ejecutar al cambiar
    * el estado
    */
   const add = (key, action) => {
@@ -64,7 +72,7 @@ Reactive.EffectHandler = () => {
    * Añade un efecto secundario que se activa sin importar a cual de las
    * llaves corresponda la llamada.
    *
-   * @param {(key: string) => void} action La acción a añadir
+   * @param {Function} action La acción a añadir
    */
   const addGlobal = (action) => {
     if (!action instanceof Function)
@@ -79,7 +87,7 @@ Reactive.EffectHandler = () => {
    * llave
    *
    * @param {string} key El nombre de la llave en la que está ese efecto
-   * @param {()=>void | false} action Acción que se desea remover
+   * @param {Function | false} action Acción que se desea remover
    *
    * @return {boolean} Si la acción fue removida correctamente
    */
@@ -102,7 +110,7 @@ Reactive.EffectHandler = () => {
    * Remueve una acción global, que dejará de ejecutarse al llamar
    * cualquier llave.
    *
-   * @param {(key: string)=>boolean | false}  action La acción global a
+   * @param {Function | false}  action La acción global a
    * remover. Si no se añade una, remuve todas las acciones globales
    *
    * @return {boolean} Si se pudo remover alguna acción
@@ -181,15 +189,22 @@ const _state = (state = {}) => {
 };
 
 /**
- * Define un componente reactivo
- * @param {Node} element El elemento padre del componente
- * @param {any} state El estado inicial del componente reactivo
- * @param {(props:any)=>HTMLElement} template Función que devuelve un
+ * Clase de la que heredan todos los componentes reactivos y
+ * agrupa la funcionalidad común entre ellos.
+ *
+ * Los métodos y propiedades de esta clase son las que se podrán
+ * llamar para todos los componentes reactivos y no deben ser
+ * sobreescritas en estos
+ *
+ * @param {Function} template Función que devuelve un
  * elemento html condicionado por el estado y props actuales, el cual será
  * renderizado cada vez que estos cambien
+ * @param {any} initialState El estado inicial del componente reactivo
+ *
+ * @constructor
  */
-Reactive.Component = function (template, initState = {}) {
-  this._state = _state(initState);
+Reactive.Component = function (template, initialState = {}) {
+  this._state = _state(initialState);
   this._props = {};
   if (template) this.template = template.bind(this);
   this.sideEffects = Reactive.EffectHandler();
@@ -222,7 +237,11 @@ Reactive.Component.prototype = {
   },
 
   /**
-   * Función que renderiza el dom según la devolución de template
+   * Función que renderiza el dom según la devolución de template.
+   *
+   * Se encarga de cambiar la vista actual del elemento a la que se
+   * devuelve desde template haciendo la menor cantidad de cambios
+   * posibles en el DOM
    */
   render: function () {
     const newTemp = this.template(this);
@@ -238,19 +257,6 @@ Reactive.Component.prototype = {
     }
   },
 
-  /**
-   * Función que copia un nodo en otro. Si ambos nodos son completamente
-   * diferentes, solo remplaza el primero con el segundo. De haber
-   * similitudes suficientes, se modificarán los atributos del primer
-   * nodo para volverlo identico al segundo.
-   *
-   * En el segundo caso, también se aplicará la misma operación a todos
-   * los hijos que haya en común entre ambos nodos
-   * @param into El nodo que se quiere igualar a otro
-   * @param node El nodo que se va a copiar en el otro
-   * @returns {Node} El nodo que está en el DOM luego de ejecutarse la
-   * acción. Puede ser cualquiera de los dos parametros
-   */
   copyNode: function (into, node) {
     if (into === node) return into;
     if (
@@ -302,11 +308,6 @@ Reactive.Component.prototype = {
     return into;
   },
 
-  /**
-   * Si el objeto tiene un arreglo de eventos, se encarga de colocar
-   * todos los eventos en su respectivo componente cada vez que
-   * se vuelva a renderizar
-   */
   putEvents: function (el = this.element) {
     if (!this.events) return;
     this.events.forEach((current) => {
@@ -327,7 +328,7 @@ Reactive.Component.prototype = {
    * Añade una función que se activa al cambiar un estado del componente
    *
    * @param {string} key El nombre del estado
-   * @param {()=>void} action La función que se ejecutará al cambiar el
+   * @param {Function} action La función que se ejecutará al cambiar el
    * estado.
    */
   onChangeState: function (key, action) {
@@ -339,7 +340,7 @@ Reactive.Component.prototype = {
    *
    * De cambiar varios estados, esta función se ejecuta para cada uno.
    *
-   * @param {(key:string[])=>void} action La función que se ejecutará en cada
+   * @param {Function} action La función que se ejecutará en cada
    * cambio de estado
    */
   onChangeAny: function (action) {
@@ -351,7 +352,7 @@ Reactive.Component.prototype = {
    * por onChangeState
    *
    * @param {string} key El nombre del estado al cual remover el efecto
-   * @param {()=>void | false} action La acción a remover. De no pasarse
+   * @param {Function | false} action La acción a remover. De no pasarse
    * este parametro o pasar false, se eliminarán todos los efectos
    * secundarios para ese estado
    *
@@ -365,7 +366,7 @@ Reactive.Component.prototype = {
    * Remueve una o todas las funciones añadidas como efectos secundarios
    * globales por onChangeAny
    *
-   * @param {(key:string)=>void | false} action La función a remover de los
+   * @param {Function | false} action La función a remover de los
    * efectos secundarios. De no pasarse este parametro o pasar false se
    * removeran todos los efectos secundarios globales
    */
@@ -374,13 +375,13 @@ Reactive.Component.prototype = {
   },
 
   /**
-   * Añade un eventListener al componente reactivo o a uno de los
-   * elementos que lo conforman señalado por un selector
+   * Añade un eventListener al componente reactivo o a algunos de los
+   * elementos que lo conforman señalados por un selector
    *
    * @param {string} type El tipo de evento
-   * @param {(Event)=>void} listener Función que se activará al
+   * @param {Function} listener Función que se activará al
    * activarse el evento
-   * @param {string} selector El selector del elemento al que se le
+   * @param {string} selector El selector de los elementos a los que se le
    * añadirá el eventListener. Si no se pasa uno, el eventListener se
    * añade en el elemento base del componente
    */
@@ -397,7 +398,7 @@ Reactive.Component.prototype = {
    * Remueve un eventListener del componente
    *
    * @param {string} type El tipo de evento
-   * @param {(Event)=>void} listener El eventListener a remover
+   * @param {Function} listener El eventListener a remover
    * @param {string} selector El selector al que está añadido el
    * eventListener si es que lo hay
    */
@@ -436,20 +437,24 @@ Reactive.Component.prototype = {
     return this.element;
   },
 
+  /**
+   * Las últimas props que hayan sido pasadas desde el padre del
+   * componente
+   */
   get props() {
     return { ...this._props };
   },
 
-  /**
-   * El estado solo se puede definir una vez. De intentar sobreescribirlo
-   * lanzará un error
-   */
   set state(state) {
     throw new Error("The state is inmutable");
   },
 
   /**
-   * Devuelve una copia inmutable del estado
+   * El estado actual del componente. Esta propiedad es inmutable, por
+   * lo cual lanzará un error si se le intenta asignar un valor
+   * directamente
+   *
+   * @see {@link Component.setState}
    */
   get state() {
     return this._state.value();
@@ -457,16 +462,28 @@ Reactive.Component.prototype = {
 };
 
 /**
+ * @typedef ComponentEvListener
+ * @property {string} type El tipo de evento. Acepta los mismos que la
+ * función addEventListener del elemento objetivo
+ * @property {Function} listener El agente de escucha que se activará
+ * cada vez que se active el evento
+ * @property {string} selector Un selector que indique cuáles elementos
+ * en el componente van a activar el evento
+ */
+
+/**
  * @typedef ComponentConfig
- * @property {(props?:any) => HTMLElement} template Una función plantilla
+ * @property {Function} template Una función plantilla
  * que recibe un objeto props y tiene acceso a this.state, y debe basarse
  * en ellas para crear un html element que será lo que se renderizará como
  * element
- * @property {*} initState El estado inicial de todos los objetos de la clase
+ * @property {*} initialState El estado inicial de todos los objetos de la clase
  * devuelta
  * @property {*} definitions Campos extra que se van a añadir a los objetos de
  * la nueva clase. Sí es una función, esta se ejecutará en el
  * contexto del constructor de la nueva clase
+ * @property {ComponentEvListener[]} Arreglo de eventos que serán añadidos
+ * a todos los componentes del tipo creado
  */
 
 /**
